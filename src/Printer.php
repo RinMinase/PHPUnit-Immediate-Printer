@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace ScriptFUSION\Pip;
@@ -21,8 +22,7 @@ use PHPUnit\Event\TestRunner\ExecutionStarted;
 use PHPUnit\Event\Tracer\Tracer;
 use PHPUnit\Util\Color;
 
-final class Printer implements Tracer
-{
+final class Printer implements Tracer {
     private readonly array $performanceThresholds;
 
     private int $totalTests;
@@ -39,8 +39,7 @@ final class Printer implements Tracer
 
     private bool $flawless = true;
 
-    public function __construct(private readonly PipConfig $config)
-    {
+    public function __construct(private readonly PipConfig $config) {
         $this->performanceThresholds = [
             'red' => $config->perfVslow,
             'yellow' => $config->perfSlow,
@@ -48,8 +47,7 @@ final class Printer implements Tracer
         ];
     }
 
-    public function trace(Event $event): void
-    {
+    public function trace(Event $event): void {
         if ($event instanceof ExecutionStarted) {
             $this->totalTests = $event->testSuite()->count();
         }
@@ -104,10 +102,15 @@ final class Printer implements Tracer
         }
 
         if ($event instanceof Finished) {
-            $id = $event->test()->id();
-            if ($this->config->testNameStrip !== '') {
-                $id = str_replace($this->config->testNameStrip, '', $id);
+            $id = $event->test()->name(); // changed
+            $id = str_replace('test', '', $id); //changed
+            $id = str_replace('_', ' ', $id); //changed
+
+            // change block
+            if ($this->trace && $this->status !== TestStatus::Failed && $this->status !== TestStatus::Errored) {
+                $id .= Color::colorize('fg-yellow', ' → ' . $this->trace->message);
             }
+            // end change block
 
             // Data provider case.
             if ($event->test()->isTestMethod() && $event->test()->testData()->hasDataFromDataProvider()) {
@@ -130,29 +133,29 @@ final class Printer implements Tracer
             }
 
             printf(
-                "%3d%% %s %s %s%s",
-                floor(++$this->testCounter / $this->totalTests * 100),
+                // "%3d%% %s %s %s%s",
+                "  %s %s %s %s%s",
+                // "  %s %s%s",
+                '[' . str_pad(floor(++$this->testCounter / $this->totalTests * 100) . '', 3, ' ', STR_PAD_LEFT) . '%]',
                 $this->status->getStatusColour() === ''
                     ? $this->status->getStatusCode()
-                    : Color::colorize("fg-{$this->status->getStatusColour()}", $this->status->getStatusCode()),
-                Color::colorize("fg-{$this->status->getColour()}", $id),
+                    : Color::colorize("fg-{$this->status->getColour()}", $this->status->getStatusCode()), // changed
+                Color::colorize('fg-dim', $id), // changed
                 Color::colorize("fg-$colour", "($ms ms)"),
                 PHP_EOL,
             );
 
-            if ($this->status === TestStatus::Failed) {
-                echo PHP_EOL, Color::colorize('fg-red', $this->throwable->description()), PHP_EOL,
-                    Color::colorize('fg-red', $this->throwable->stackTrace()), PHP_EOL
-                ;
+            // if ($this->status === TestStatus::Failed) {
+            //   echo PHP_EOL, Color::colorize('fg-red', $this->throwable->description()), PHP_EOL,
+            //   Color::colorize('fg-red', $this->throwable->stackTrace()), PHP_EOL;
 
-                $this->throwable = null;
-            }
+            //   $this->throwable = null;
+            // }
 
             while ($this->status === TestStatus::Errored && $this->throwable) {
                 echo PHP_EOL, Color::colorize('fg-white,bg-red', " {$this->throwable->className()} "), ' ',
-                    Color::colorize('fg-red', $this->throwable->message()), PHP_EOL, PHP_EOL,
-                    Color::colorize('fg-red', $this->throwable->stackTrace()), PHP_EOL
-                ;
+                Color::colorize('fg-red', $this->throwable->message()), PHP_EOL, PHP_EOL,
+                Color::colorize('fg-red', $this->throwable->stackTrace()), PHP_EOL;
 
                 if ($this->throwable->hasPrevious()) {
                     echo Color::colorize('fg-red', 'Caused by');
@@ -163,18 +166,18 @@ final class Printer implements Tracer
                 }
             }
 
-            if ($this->trace) {
-                printf(
-                    Color::colorize("fg-{$this->status->getColour()}", '%s%s: %s in %s on line %s%1$s%1$s'),
-                    PHP_EOL,
-                    $this->status->name,
-                    $this->trace->message,
-                    $this->trace->file,
-                    $this->trace->line
-                );
+            // if ($this->trace) {
+            //   printf(
+            //     Color::colorize("fg-{$this->status->getColour()}", '%s%s: %s in %s on line %s%1$s%1$s'),
+            //     PHP_EOL,
+            //     $this->status->name,
+            //     $this->trace->message,
+            //     $this->trace->file,
+            //     $this->trace->line
+            //   );
 
-                $this->trace = null;
-            }
+            //   $this->trace = null;
+            // }
 
             $this->status = null;
         }
